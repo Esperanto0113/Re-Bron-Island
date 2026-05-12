@@ -1,0 +1,95 @@
+/* ============================================================
+   Re:Born Island - 전역 스타일
+   ⚠️ Phaser Scale.FIT + CENTER_BOTH 와 호환되는 구조
+      display:flex 는 Phaser 마진 중앙화와 충돌하므로 금지
+   ============================================================ */
+
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  /* 레터박스 배경 (게임 캔버스 바깥 여백) */
+  background: radial-gradient(ellipse at center, #0a1f0a 0%, #050e05 100%);
+  font-family: 'Nunito', 'Jua', sans-serif;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ─── 게임 컨테이너 ────────────────────────────────────────────
+   ⚠️ display:flex 절대 금지!
+   Phaser Scale Manager 가 canvas.style.marginLeft/marginTop 으로
+   중앙 배치를 처리합니다. flex 컨텍스트에서는 margin:auto 가
+   다르게 동작하여 캔버스가 우측으로 밀립니다.
+──────────────────────────────────────────────────────────────── */
+#game-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ─── Phaser 가 삽입하는 <canvas> ─── */
+#game-container canvas {
+  display: block;
+  image-rendering: auto;
+  /* 미세한 그림자로 캔버스 경계 강조 */
+  box-shadow:
+    0 0 0 1px rgba(0, 200, 100, 0.08),
+    0 8px 60px rgba(0, 0, 0, 0.9);
+}
+
+/* ─── 로딩 화면 (Phaser 초기화 전 DOM 표시) ─── */
+#loading-screen {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  color: #7FFFD4;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+  z-index: 10;
+  white-space: nowrap;
+}
+
+#loading-screen .leaf {
+  font-size: 52px;
+  animation: leafSpin 1.8s ease-in-out infinite;
+  filter: drop-shadow(0 0 12px rgba(0, 200, 100, 0.6));
+}
+
+#loading-screen p {
+  opacity: 0.85;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes leafSpin {
+  0%   { transform: rotate(0deg)   scale(1);    }
+  50%  { transform: rotate(180deg) scale(1.15); }
+  100% { transform: rotate(360deg) scale(1);    }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.55; }
+  50%       { opacity: 1;    }
+}

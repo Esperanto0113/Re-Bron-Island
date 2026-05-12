@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Re:Born Island 🌿</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Jua&display=swap" rel="stylesheet" />
+
+  <!-- Phaser 3.60 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+
+  <!-- 유틸리티 / 데이터 클래스 -->
+  <script src="js/config.js"></script>
+  <script src="js/GameState.js"></script>
+  <script src="js/TrashItem.js"></script>
+  <script src="js/recipes.js"></script>
+
+  <!-- 씬(Scene) 파일들 -->
+  <script src="js/scenes/BootScene.js"></script>
+  <script src="js/scenes/MenuScene.js"></script>
+  <script src="js/scenes/IslandScene.js"></script>
+  <script src="js/scenes/WashScene.js"></script>
+  <script src="js/scenes/SortScene.js"></script>
+  <script src="js/scenes/CraftScene.js"></script>
+  <script src="js/scenes/DexScene.js"></script>
+  <script src="js/scenes/EndingScene.js"></script>
+
+  <!-- 게임 진입점 -->
+  <script src="js/main.js"></script>
+</head>
+<body>
+  <!-- Phaser 캔버스가 여기에 삽입됩니다 -->
+  <div id="game-container">
+    <div id="loading-screen">
+      <div class="leaf">🌿</div>
+      <p>Re:Born Island 로딩 중...</p>
+    </div>
+  </div>
+</body>
+</html>
