@@ -338,6 +338,12 @@ class WashScene extends Phaser.Scene {
     gameState.addScore(CONFIG.SCORE.WASH_FAIL);
     gameState.increasePollution(5);
     gameState.resetCombo();
+    if (gameState.shouldTriggerPollutionGameOver()) {
+      gameState.gameOver = true;
+      gameState.save();
+      this.scene.start('EndingScene');
+      return;
+    }
 
     // 화면 흔들기
     this.cameras.main.shake(400, 0.012);

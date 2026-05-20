@@ -50,6 +50,10 @@ class IslandScene extends Phaser.Scene {
     this._natureLayer = this.add.graphics().setDepth(4);
     /* 건물 레이어(공유 Graphics) 제거 → _bldObjects 로 대체 */
 
+    this._dangerBorderGfx   = this.add.graphics().setDepth(13);
+    this._dangerWarnActive  = false;
+    this._gameOverCountdown = null;
+
     this._redrawScene();
 
     /* ★ 건물: 씬 시작 시 한 번만 생성 (오염도 무관) */
@@ -82,6 +86,7 @@ class IslandScene extends Phaser.Scene {
     this._redrawScene();
     this._refreshBuildings(CONFIG.WIDTH, CONFIG.HEIGHT); // 돌아왔을 때 새 건물 반영
     this._refreshUI();
+    this._checkDangerState();
     this._checkWinCondition();
   }
 
@@ -90,7 +95,7 @@ class IslandScene extends Phaser.Scene {
   ══════════════════════════════════════════════════════════ */
   _redrawScene() {
     const { WIDTH, HEIGHT } = CONFIG;
-    const p = gameState.pollution / 100;
+    const p = Phaser.Math.Clamp(gameState.pollution / CONFIG.POLLUTION.MAX, 0, 1);
 
     this._bgGraphics.clear();
     this._islandGfx.clear();
@@ -117,6 +122,10 @@ class IslandScene extends Phaser.Scene {
 
     this._drawIsland(p, WIDTH, HEIGHT);
     this._drawNature(p, WIDTH, HEIGHT);
+
+    // if (!localStorage.getItem('tutorial_done')) {
+    //   this.scene.launch('TutorialScene');
+    // }
   }
 
   _drawIsland(p, W, H) {
@@ -246,7 +255,7 @@ class IslandScene extends Phaser.Scene {
             }
         }
     });
-}
+  }
 
   _drawFloatingTrash(p, W, H) {
     const g = this._natureLayer;
@@ -555,6 +564,27 @@ class IslandScene extends Phaser.Scene {
       duration: 1400 + Math.random()*800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
     });
 
+    const cfg = gameState.getDifficultyConfig();
+   if (cfg.trashDecay) {
+     this.time.delayedCall(25000, () => {
+       if (!item.collected) {
+         item.collected = true;
+         floatTween.stop();
+         if (emitter) emitter.destroy();
+         this.tweens.add({
+           targets: sprite, alpha:0, scaleX:0.1, scaleY:0.1,
+           duration:400, onComplete: () => sprite.destroy(),
+         });
+         gameState.increasePollution(6);
+         this._popupText(sprite.x, sprite.y - 20, '🚨 방치! 오염 +6', '#FF4444');
+         this._refreshUI();
+         this._checkDangerState();
+         this._trashObjects = this._trashObjects.filter(o => o.item.id !== item.id);
+       }
+     });
+   }
+
+
     let emitter = null;
     if (item.isDirty) {
       try {
@@ -612,6 +642,7 @@ class IslandScene extends Phaser.Scene {
     if (item.isDirty) gameState.increasePollution(2);
     this._popupText(sprite.x, sprite.y-20, `+${item.getKoreanName()}!`, '#FFE66D');
     this._refreshUI();
+    this._checkDangerState();
     this._trashObjects = this._trashObjects.filter(o => o.item.id !== item.id);
     const targetCount = Math.max(0, Math.floor(gameState.pollution / 22));
     if (this._trashObjects.length < targetCount) {
@@ -628,35 +659,70 @@ class IslandScene extends Phaser.Scene {
     this._buildPollutionBar(W, H);
   }
 
-  _buildTopHUD(W) {
-    this.add.graphics().setDepth(15).fillStyle(0x000000, 0.38).fillRect(0, 0, W, 92);
-    this._scoreTxt        = this.add.text(12,   8, `⭐ ${gameState.score}`, CONFIG.TEXT.SCORE).setFontSize('22px').setDepth(16);
-    this._comboTxt        = this.add.text(W/2,  8, '', CONFIG.TEXT.COMBO).setOrigin(0.5,0).setFontSize('18px').setDepth(16);
-    this._ecoTxt          = this.add.text(W-12, 8, '', { fontFamily:'Jua', fontSize:'13px', color:'#FFE66D' }).setOrigin(1,0).setDepth(16);
-    this._invTxt          = this.add.text(12,  34, '🎒 인벤토리 0개 | 🥤0 🍶0 🥫0 📄0', CONFIG.TEXT.SMALL).setFontSize('11px').setDepth(16);
-    this._pollutionPctTxt = this.add.text(W-10,34, '🏭 100%', { fontFamily:'Nunito', fontSize:'11px', color:'#FF8888' }).setOrigin(1,0).setDepth(16);
-    this._passiveTxt      = this.add.text(W/2, 74, '', { fontFamily:'Nunito', fontSize:'10px', color:'#9FE7CC', align:'center' }).setOrigin(0.5,0).setDepth(16);
-    this._refreshTopHUD();
-  }
+  /* ── 1. _buildTopHUD(W) ── 이 메서드 전체를 교체 ── */
+_buildTopHUD(W) {
+  /* ★ 배경 높이 122px */
+  this.add.graphics().setDepth(15)
+    .fillStyle(0x000000, 0.42)
+    .fillRect(0, 0, W, 122);
+ 
+  /* ─ 행 1 (y=10): 점수 | 콤보 | 에코/완화 ─ */
+  this._scoreTxt = this.add.text(14, 10, `⭐ ${gameState.score}`, CONFIG.TEXT.SCORE)
+    .setFontSize('26px').setDepth(16);                      // ★ 22→26px
+ 
+  this._comboTxt = this.add.text(W / 2, 10, '', CONFIG.TEXT.COMBO)
+    .setOrigin(0.5, 0).setFontSize('22px').setDepth(16);   // ★ 18→22px
+ 
+  this._ecoTxt = this.add.text(W - 14, 10, '', {
+    fontFamily: 'Jua', fontSize: '14px', color: '#FFE66D', // ★ 13→14px
+  }).setOrigin(1, 0).setDepth(16);
+ 
+  /* ─ 행 2 (y=44): 인벤토리 | 오염도 % ─ */
+  this._invTxt = this.add.text(14, 44,
+    '🎒 인벤토리 0개 | 🥤0 🍶0 🥫0 📄0',
+    { ...CONFIG.TEXT.SMALL }
+  ).setFontSize('15px').setDepth(16);                       // ★ 11→15px, y 34→44
+ 
+  this._pollutionPctTxt = this.add.text(W - 14, 44, '🏭 100%', {
+    fontFamily: 'Nunito', fontSize: '15px', color: '#FF8888', // ★ 11→15px
+  }).setOrigin(1, 0).setDepth(16);
+ 
+  /* 행 3: 오염도 바 → _buildPollutionBar 에서 y=66 에 생성 */
+ 
+  /* ─ 행 4 (y=94): 패시브/시너지 텍스트 ─ */
+  this._passiveTxt = this.add.text(W / 2, 94, '', {
+    fontFamily: 'Nunito', fontSize: '12px', color: '#9FE7CC', // ★ 10→12px, y 74→94
+    align: 'center',
+  }).setOrigin(0.5, 0).setDepth(16);
+ 
+  this._refreshTopHUD();
+}
 
-  _buildPollutionBar(W, H) {
-    const barX=10, barY=50, barW=W-20, barH=7;
-    this._pollutionBarBg = this.add.graphics().setDepth(16);
-    this._pollutionBarFg = this.add.graphics().setDepth(17);
-    this._pollutionBarBg.fillStyle(0x2A3A2A, 0.9);
-    this._pollutionBarBg.fillRoundedRect(barX, barY, barW, barH, 3);
-    this._pollutionBarX=barX; this._pollutionBarY=barY;
-    this._pollutionBarW=barW; this._pollutionBarH=barH;
-    this._refreshPollutionBar();
-  }
+  /* ── 2. _buildPollutionBar(W, H) ── 이 메서드 전체를 교체 ── */
+_buildPollutionBar(W, H) {
+  /* ★ 두꺼워진 바: y=66, h=13 (기존 y=50, h=7) */
+  const barX = 10, barY = 66, barW = W - 20, barH = 13;
+ 
+  this._pollutionBarBg = this.add.graphics().setDepth(16);
+  this._pollutionBarFg = this.add.graphics().setDepth(17);
+ 
+  this._pollutionBarBg.fillStyle(0x2A3A2A, 0.9);
+  this._pollutionBarBg.fillRoundedRect(barX, barY, barW, barH, 4);
+ 
+  this._pollutionBarX = barX;
+  this._pollutionBarY = barY;
+  this._pollutionBarW = barW;
+  this._pollutionBarH = barH;
+  this._refreshPollutionBar();
+}
 
   _refreshPollutionBar() {
-    const p = gameState.pollution / 100;
+    const p = Phaser.Math.Clamp(gameState.pollution / CONFIG.POLLUTION.MAX, 0, 1);
     this._pollutionBarFg.clear();
     const color = Phaser.Display.Color.Interpolate.ColorWithColor(
       Phaser.Display.Color.IntegerToColor(0x00C896),
       Phaser.Display.Color.IntegerToColor(0xFF6B6B),
-      100, p * 100,
+      CONFIG.POLLUTION.MAX, p * CONFIG.POLLUTION.MAX,
     );
     this._pollutionBarFg.fillStyle(Phaser.Display.Color.ObjectToColor(color).color, 1);
     const fillW = Math.max(0, this._pollutionBarW * p);
@@ -756,29 +822,39 @@ class IslandScene extends Phaser.Scene {
     this._redrawScene(); // 건물은 재드로우 안 함 ← 효율 향상
   }
 
-  _refreshTopHUD() {
-    const inv={plastic:0,glass:0,metal:0,paper:0};
-    gameState.inventory.forEach(item=>{
-      if(Object.prototype.hasOwnProperty.call(inv,item.type)) inv[item.type]++;
-    });
-    this._scoreTxt.setText(`⭐ ${gameState.score}`);
-    this._invTxt.setText(`🎒 인벤토리 ${gameState.inventory.length}개 | 🥤${inv.plastic} 🍶${inv.glass} 🥫${inv.metal} 📄${inv.paper}`);
-    this._comboTxt.setText(gameState.combo>1?`🔥 x${gameState.combo} 콤보!`:'');
-    const mp=Math.round(gameState.getTotalPollutionMitigation()*100);
-    const pp=gameState.getPurificationPerTick().toFixed(1);
-    if(gameState.ecoFeverMode&&Date.now()<gameState.ecoFeverEndTime){
-      this._ecoTxt.setText('🌟 ECO FEVER\n점수 2배');
-    } else {
-      this._ecoTxt.setText(mp>0?`🛡️ -${mp}%\n정화 ${pp}`:`정화 ${pp}`);
-    }
-    const pct=Math.round(gameState.pollution);
-    const pc=pct>70?'#FF6B6B':pct>40?'#FFB74D':'#88DD88';
-    this._pollutionPctTxt.setText(`🏭 ${pct}%`).setColor(pc);
-    const syn=gameState.getActiveSynergyLabels();
-    if(syn.length)      this._passiveTxt.setText(`활성 시너지: ${syn.join(' / ')}`);
-    else if(mp>0)       this._passiveTxt.setText('활성 시너지 없음 · 건물 조합으로 추가 보너스를 얻으세요');
-    else                this._passiveTxt.setText('제작으로 패시브를 활성화하세요 (오염 증가 완화/자동 자원 수급)');
+  
+/* ── 3. _refreshTopHUD() ── 이 메서드 전체를 교체 ── */
+_refreshTopHUD() {
+  const inv = { plastic: 0, glass: 0, metal: 0, paper: 0 };
+  gameState.inventory.forEach(item => {
+    if (Object.prototype.hasOwnProperty.call(inv, item.type)) inv[item.type]++;
+  });
+ 
+  this._scoreTxt.setText(`⭐ ${gameState.score}`);
+  this._invTxt.setText(
+    `🎒 인벤토리 ${gameState.inventory.length}개 | 🥤${inv.plastic} 🍶${inv.glass} 🥫${inv.metal} 📄${inv.paper}`
+  );
+  this._comboTxt.setText(gameState.combo > 1 ? `🔥 x${gameState.combo} 콤보!` : '');
+ 
+  const mp = Math.round(gameState.getTotalPollutionMitigation() * 100);
+  const pp = gameState.getPurificationPerTick().toFixed(1);
+  if (gameState.ecoFeverMode && Date.now() < gameState.ecoFeverEndTime) {
+    this._ecoTxt.setText(`🌟 ECO FEVER\n점수 2배`);
+  } else {
+    this._ecoTxt.setText(mp > 0 ? `🛡️ -${mp}%\n정화 ${pp}` : `정화 ${pp}`);
   }
+ 
+  /* ★ 오염도 % 색상 */
+  const pct = Math.round(gameState.pollution);
+  const pc  = pct > 70 ? '#FF6B6B' : pct > 40 ? '#FFB74D' : '#88DD88';
+  this._pollutionPctTxt.setText(`🏭 ${pct}%`).setColor(pc);
+ 
+  /* 시너지 텍스트 */
+  const syn = gameState.getActiveSynergyLabels();
+  if (syn.length)  this._passiveTxt.setText(`활성 시너지: ${syn.join(' / ')}`);
+  else if (mp > 0) this._passiveTxt.setText('활성 시너지 없음 · 건물 조합으로 추가 보너스를 얻으세요');
+  else             this._passiveTxt.setText('제작으로 패시브를 활성화하세요 (오염 증가 완화/자동 자원 수급)');
+}
 
   _refreshResourceTexts() {
     for(const [type,txt] of Object.entries(this._resourceTexts))
@@ -839,11 +915,168 @@ class IslandScene extends Phaser.Scene {
     this._refreshUI();
   }
 
-  _onEnvironmentTick() {
-    const baseIncrease=gameState.isPollutionStabilized()?0:2.4;
-    const before=gameState.pollution;
-    if(baseIncrease>0) gameState.increasePollution(baseIncrease);
-    gameState.reducePollution(gameState.getPurificationPerTick());
-    if(Math.abs(gameState.pollution-before)>=0.4){ this._refreshUI(); this._checkWinCondition(); }
+    _onEnvironmentTick() {
+      if (gameState.gameOver) return;
+ 
+      /* ★ 난이도별 오염 증가량 */
+      const cfg           = gameState.getDifficultyConfig();
+      const baseIncrease  = gameState.isPollutionStabilized() ? 0 : cfg.pollutionPerTick;
+      const before        = gameState.pollution;
+ 
+      if (baseIncrease > 0) gameState.increasePollution(baseIncrease);
+      gameState.reducePollution(gameState.getPurificationPerTick());
+ 
+      /* ★ 위험 / 게임오버 체크 */
+      this._checkDangerState();
+ 
+      if (Math.abs(gameState.pollution - before) >= 0.4) {
+        this._refreshUI();
+        this._checkWinCondition();
+      }
+    }
+  /* ── 위험 상태 종합 체크 ── */
+_checkDangerState() {
+  const p   = gameState.pollution;
+  const cfg = gameState.getDifficultyConfig();
+ 
+  /* 빨간 테두리 (위험 기준 이상) */
+  this._updateDangerBorder(p);
+ 
+  /* 경고 텍스트 표시 / 제거 */
+  if (p >= CONFIG.POLLUTION.DANGER_THRESHOLD && !this._dangerWarnActive) {
+    this._dangerWarnActive = true;
+    this._showDangerWarning();
+  } else if (p < CONFIG.POLLUTION.DANGER_THRESHOLD && this._dangerWarnActive) {
+    this._dangerWarnActive = false;
+    if (this._dangerWarnTxt) { this._dangerWarnTxt.destroy(); this._dangerWarnTxt = null; }
   }
+ 
+  /* 게임오버 조건 */
+  if (!cfg.gameOver) {
+    if (this._gameOverCountdown) this._cancelGameOverCountdown();
+    return;
+  }
+
+  if (gameState.shouldTriggerPollutionGameOver()) {
+    this._triggerGameOver();
+  } else if (p >= CONFIG.POLLUTION.COUNTDOWN_AT) {
+    if (!this._gameOverCountdown) {
+      if (cfg.gameOverGrace > 0) this._startGameOverCountdown(cfg.gameOverGrace);
+      else this._triggerGameOver();
+    }
+  } else if (p < CONFIG.POLLUTION.COUNTDOWN_AT && this._gameOverCountdown) {
+    /* 오염 낮아지면 카운트다운 취소 */
+    this._cancelGameOverCountdown();
+  }
+}
+ 
+/* ── 빨간 테두리 ── */
+_updateDangerBorder(pollution) {
+  const dangerRange = CONFIG.POLLUTION.GAMEOVER_AT - CONFIG.POLLUTION.DANGER_THRESHOLD;
+  const ratio = Phaser.Math.Clamp((pollution - CONFIG.POLLUTION.DANGER_THRESHOLD) / dangerRange, 0, 1);
+  this._dangerBorderGfx.clear();
+  if (ratio <= 0) return;
+ 
+  const W = CONFIG.WIDTH, H = CONFIG.HEIGHT, T = 22;
+  const alpha = Math.min(0.65, ratio * 0.7);
+  this._dangerBorderGfx.fillStyle(0xFF1111, alpha);
+  this._dangerBorderGfx.fillRect(0,   0,   W,   T);       // 상단
+  this._dangerBorderGfx.fillRect(0,   H-T, W,   T);       // 하단
+  this._dangerBorderGfx.fillRect(0,   T,   T,   H-T*2);   // 좌
+  this._dangerBorderGfx.fillRect(W-T, T,   T,   H-T*2);   // 우
+}
+ 
+/* ── 위험 경고 텍스트 ── */
+_showDangerWarning() {
+  if (this._dangerWarnTxt) return;
+  const cfg = gameState.getDifficultyConfig();
+  const msg = cfg.gameOver ? '⚠️ 위험! 오염도가 한계에 가까워졌습니다!' : '⚠️ 오염도가 위험 수준입니다!';
+ 
+  this._dangerWarnTxt = this.add.text(CONFIG.WIDTH / 2, 108, msg, {
+    fontFamily: 'Jua', fontSize: '15px', color: '#FF4444',
+    stroke: '#1A0000', strokeThickness: 3,
+  }).setOrigin(0.5).setDepth(18);
+ 
+  /* 깜빡임 */
+  this.tweens.add({
+    targets:  this._dangerWarnTxt,
+    alpha:    0.2,
+    duration: 500,
+    yoyo:     true,
+    repeat:   -1,
+  });
+}
+ 
+/* ── 게임오버 카운트다운 ── */
+_startGameOverCountdown(graceMs) {
+  const secs = Math.ceil(graceMs / 1000);
+  let   remaining = secs;
+ 
+  /* 대형 카운트다운 텍스트 */
+  this._gameOverCountTxt = this.add.text(CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.45, '', {
+    fontFamily: 'Jua', fontSize: '72px', color: '#FF2222',
+    stroke: '#1A0000', strokeThickness: 6,
+  }).setOrigin(0.5).setDepth(60).setAlpha(0);
+ 
+  this.tweens.add({ targets: this._gameOverCountTxt, alpha: 1, duration: 300 });
+ 
+  const updateTxt = () => {
+    if (!this._gameOverCountTxt) return;
+    this._gameOverCountTxt.setText(`${remaining}`);
+    this.tweens.add({
+      targets: this._gameOverCountTxt,
+      scaleX: 1.3, scaleY: 1.3,
+      duration: 200, yoyo: true, ease: 'Back.easeOut',
+    });
+    this.cameras.main.shake(120, 0.006);
+  };
+  updateTxt();
+ 
+  /* 1초 간격 카운트 */
+  this._gameOverCountdown = this.time.addEvent({
+    delay: 1000,
+    repeat: secs - 1,
+    callback: () => {
+      remaining--;
+      if (remaining > 0) {
+        updateTxt();
+      } else {
+        this._triggerGameOver();
+      }
+    },
+  });
+ 
+  /* 안내 텍스트 */
+  this._gameOverLabelTxt = this.add.text(CONFIG.WIDTH / 2, CONFIG.HEIGHT * 0.55, '오염도 140% 이상 — 150% 도달 시 침몰합니다!', {
+    fontFamily: 'Nunito', fontSize: '15px', color: '#FF8888',
+    stroke: '#1A0000', strokeThickness: 3,
+  }).setOrigin(0.5).setDepth(60);
+  this.tweens.add({
+    targets: this._gameOverLabelTxt, alpha: 0.3,
+    duration: 600, yoyo: true, repeat: -1,
+  });
+}
+ 
+/* ── 카운트다운 취소 ── */
+_cancelGameOverCountdown() {
+  if (this._gameOverCountdown) {
+    this._gameOverCountdown.remove();
+    this._gameOverCountdown = null;
+  }
+  if (this._gameOverCountTxt)  { this._gameOverCountTxt.destroy();  this._gameOverCountTxt  = null; }
+  if (this._gameOverLabelTxt)  { this._gameOverLabelTxt.destroy();  this._gameOverLabelTxt  = null; }
+}
+ 
+/* ── 게임오버 강제 전환 ── */
+_triggerGameOver() {
+  if (gameState.gameOver) return;
+  gameState.gameOver = true;
+ 
+  /* 화면 암전 */
+  this.cameras.main.fadeOut(800, 80, 0, 0);
+  this.time.delayedCall(800, () => {
+    gameState.save();
+    this.scene.start('EndingScene');
+  });
+}
 }

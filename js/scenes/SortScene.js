@@ -348,6 +348,12 @@ class SortScene extends Phaser.Scene {
     gameState.increasePollution(3);
     gameState.resetCombo();
     this._wrongCount++;
+    if (gameState.shouldTriggerPollutionGameOver()) {
+      gameState.gameOver = true;
+      gameState.save();
+      this.scene.start('EndingScene');
+      return;
+    }
 
     // 화면 흔들기
     this.cameras.main.shake(350, 0.01);

@@ -46,6 +46,91 @@ class EndingScene extends Phaser.Scene {
   /* ─── 결과 카드 (9:16 카드 UI) ─── */
   _buildResultCard(W, H) {
     const grade   = gameState.getEndingByPollution();
+
+    if (grade.isGameOver) {
+  /* ── 게임오버 전용 화면 ── */
+  this._card = this.add.container(0, 0);
+ 
+  const cW = W - 32, cH = H * 0.82, cX = 16, cY = H * 0.05;
+ 
+  /* 배경 (붉은 톤) */
+  const cardBg = this.add.graphics();
+  cardBg.fillStyle(0x1A0808, 1);
+  cardBg.fillRoundedRect(cX, cY, cW, cH, 20);
+  cardBg.lineStyle(2.5, 0xFF2222, 0.6);
+  cardBg.strokeRoundedRect(cX, cY, cW, cH, 20);
+  this._card.add(cardBg);
+ 
+  /* 상단 붉은 배너 */
+  const bannerBg = this.add.graphics();
+  bannerBg.fillStyle(0xFF1111, 0.18);
+  bannerBg.fillRoundedRect(cX, cY, cW, 90, { tl:20, tr:20, bl:0, br:0 });
+  this._card.add(bannerBg);
+ 
+  /* 게임 제목 */
+  this._card.add(this.add.text(W/2, cY+22, '🌿 Re:Born Island', {
+    fontFamily:'Jua', fontSize:'18px', color:'#FF8888',
+  }).setOrigin(0.5));
+ 
+  this._card.add(this.add.text(W/2, cY+50, `플레이 시간: ${gameState.getPlayTime()}`, {
+    fontFamily:'Nunito', fontSize:'13px', color:'#887777',
+  }).setOrigin(0.5));
+ 
+  /* 게임오버 이모지 */
+  this._gradeEmoji = this.add.text(W/2, cY+130, '☠️', {
+    fontSize:'80px',
+  }).setOrigin(0.5).setScale(0);
+  this._card.add(this._gradeEmoji);
+ 
+  /* 제목 */
+  this._card.add(this.add.text(W/2, cY+210, '게임오버', {
+    fontFamily:'Jua', fontSize:'36px', color:'#FF2222',
+    stroke:'#1A0000', strokeThickness:5,
+  }).setOrigin(0.5));
+ 
+  /* 설명 */
+  this._card.add(this.add.text(W/2, cY+258, grade.desc, {
+    fontFamily:'Nunito', fontSize:'14px', color:'#FF9999',
+    align:'center', lineSpacing:8, wordWrap:{width:W-80},
+  }).setOrigin(0.5));
+ 
+  /* 구분선 */
+  const divBg = this.add.graphics();
+  divBg.lineStyle(1, 0xFF2222, 0.3);
+  divBg.lineBetween(cX+20, cY+310, cX+cW-20, cY+310);
+  this._card.add(divBg);
+ 
+  /* 통계 (점수 · 오염도) */
+  this._card.add(this.add.text(W/2, cY+340, `⭐ 최종 점수: ${gameState.score}점`, {
+    fontFamily:'Jua', fontSize:'22px', color:'#FFB74D',
+    stroke:'#1A0000', strokeThickness:3,
+  }).setOrigin(0.5));
+ 
+  this._card.add(this.add.text(W/2, cY+374, `🏭 오염도: ${Math.round(gameState.pollution)}%  (오버)`, {
+    fontFamily:'Jua', fontSize:'16px', color:'#FF6666',
+    stroke:'#1A0000', strokeThickness:3,
+  }).setOrigin(0.5));
+ 
+  /* 난이도 표시 */
+  const diffCfg = gameState.getDifficultyConfig();
+  this._card.add(this.add.text(W/2, cY+408, `${diffCfg.emoji} 난이도: ${diffCfg.label}`, {
+    fontFamily:'Jua', fontSize:'15px', color: diffCfg.colorHex,
+  }).setOrigin(0.5));
+ 
+  /* 힌트 */
+  this._card.add(this.add.text(W/2, cY+455, '💡 TIP: 건물을 먼저 제작하면\n오염 증가를 늦출 수 있어요!', {
+    fontFamily:'Nunito', fontSize:'13px', color:'#886666',
+    align:'center', lineSpacing:6,
+  }).setOrigin(0.5));
+ 
+  /* 서명 */
+  this._card.add(this.add.text(W/2, cY+cH-22, '#ReBornIsland · 다시 도전해보세요 🌍', {
+    fontFamily:'Nunito', fontSize:'10px', color:'#443333',
+  }).setOrigin(0.5));
+ 
+  return; /* 일반 카드 렌더링 건너뜀 */
+}
+
     const cardW   = W - 32;
     const cardH   = H * 0.82;
     const cardX   = 16;
