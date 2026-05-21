@@ -89,36 +89,36 @@ class EndingScene extends Phaser.Scene {
   }).setOrigin(0.5));
  
   /* 설명 */
-  this._card.add(this.add.text(W/2, cY+258, grade.desc, {
+  this._card.add(this.add.text(W/2, cY+244, grade.desc, {
     fontFamily:'Nunito', fontSize:'14px', color:'#FF9999',
     align:'center', lineSpacing:8, wordWrap:{width:W-80},
-  }).setOrigin(0.5));
+  }).setOrigin(0.5, 0));
  
   /* 구분선 */
   const divBg = this.add.graphics();
   divBg.lineStyle(1, 0xFF2222, 0.3);
-  divBg.lineBetween(cX+20, cY+310, cX+cW-20, cY+310);
+  divBg.lineBetween(cX+20, cY+350, cX+cW-20, cY+350);
   this._card.add(divBg);
  
   /* 통계 (점수 · 오염도) */
-  this._card.add(this.add.text(W/2, cY+340, `⭐ 최종 점수: ${gameState.score}점`, {
+  this._card.add(this.add.text(W/2, cY+384, `⭐ 최종 점수: ${gameState.score}점`, {
     fontFamily:'Jua', fontSize:'22px', color:'#FFB74D',
     stroke:'#1A0000', strokeThickness:3,
   }).setOrigin(0.5));
  
-  this._card.add(this.add.text(W/2, cY+374, `🏭 오염도: ${Math.round(gameState.pollution)}%  (오버)`, {
+  this._card.add(this.add.text(W/2, cY+422, `🏭 오염도: ${Math.round(gameState.pollution)}%  (오버)`, {
     fontFamily:'Jua', fontSize:'16px', color:'#FF6666',
     stroke:'#1A0000', strokeThickness:3,
   }).setOrigin(0.5));
  
   /* 난이도 표시 */
   const diffCfg = gameState.getDifficultyConfig();
-  this._card.add(this.add.text(W/2, cY+408, `${diffCfg.emoji} 난이도: ${diffCfg.label}`, {
+  this._card.add(this.add.text(W/2, cY+456, `${diffCfg.emoji} 난이도: ${diffCfg.label}`, {
     fontFamily:'Jua', fontSize:'15px', color: diffCfg.colorHex,
   }).setOrigin(0.5));
  
   /* 힌트 */
-  this._card.add(this.add.text(W/2, cY+455, '💡 TIP: 건물을 먼저 제작하면\n오염 증가를 늦출 수 있어요!', {
+  this._card.add(this.add.text(W/2, cY+510, '💡 TIP: 건물을 먼저 제작하면\n오염 증가를 늦출 수 있어요!', {
     fontFamily:'Nunito', fontSize:'13px', color:'#886666',
     align:'center', lineSpacing:6,
   }).setOrigin(0.5));
@@ -175,36 +175,36 @@ class EndingScene extends Phaser.Scene {
     this._card.add(this._gradeEmoji);
 
     this._card.add(
-      this.add.text(W / 2, gradeY + 72, grade.title, {
+      this.add.text(W / 2, gradeY + 78, grade.title, {
         fontFamily: 'Jua', fontSize: '30px', color: grade.color,
         stroke: '#1A3A2A', strokeThickness: 5,
       }).setOrigin(0.5)
     );
 
     this._card.add(
-      this.add.text(W / 2, gradeY + 95, grade.desc, {
-        fontFamily: 'Nunito', fontSize: '11px', color: '#A5D6A7',
-        align: 'center', wordWrap: { width: W - 70 },
-      }).setOrigin(0.5)
+      this.add.text(W / 2, gradeY + 110, grade.desc, {
+        fontFamily: 'Nunito', fontSize: '12px', color: '#A5D6A7',
+        align: 'center', lineSpacing: 4, wordWrap: { width: W - 70 },
+      }).setOrigin(0.5, 0)
     );
 
     /* 점수 */
     this._card.add(
-      this.add.text(W / 2, gradeY + 126, `⭐ 최종 점수: ${gameState.score}점`, {
+      this.add.text(W / 2, gradeY + 158, `⭐ 최종 점수: ${gameState.score}점`, {
         fontFamily: 'Jua', fontSize: '22px', color: CONFIG.COLORS.YELLOW + '',
         stroke: '#1A3A2A', strokeThickness: 4,
       }).setOrigin(0.5).setTint(CONFIG.COLORS.YELLOW)
     );
 
     this._card.add(
-      this.add.text(W / 2, gradeY + 150, `🏭 종료 시점 오염도: ${Math.round(gameState.pollution)}%`, {
+      this.add.text(W / 2, gradeY + 188, `🏭 종료 시점 오염도: ${Math.round(gameState.pollution)}%`, {
         fontFamily: 'Jua', fontSize: '16px', color: '#FFCC80',
         stroke: '#1A3A2A', strokeThickness: 3,
       }).setOrigin(0.5)
     );
 
     /* 구분선 */
-    const divY = gradeY + 178;
+    const divY = gradeY + 222;
     const divBg = this.add.graphics();
     divBg.lineStyle(1, CONFIG.COLORS.MINT, 0.3);
     divBg.lineBetween(cardX + 20, divY, cardX + cardW - 20, divY);
@@ -214,7 +214,7 @@ class EndingScene extends Phaser.Scene {
     this._buildStats(W, cardX, divY + 12, cardW);
 
     /* 건물 목록 */
-    const buildY = divY + 200;
+    const buildY = divY + 206;
     this._buildBuildingList(W, cardX, buildY, cardW);
 
     /* 하단 서명 */
